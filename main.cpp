@@ -2,6 +2,7 @@
 #include <fstream>
 #include <windows.h>
 #include <conio.h>
+#include <cstring>
 using namespace std;
 int publishResult = 0;
 void home();  // To create a home page where user can decide his user mode
@@ -28,6 +29,12 @@ void viewSpecificStudentMarks(int);
 
 // student specific feature
 void viewResultOfAllStudents();
+
+// query system
+void studentSendQuery(int);
+void studentViewQueries(int);
+void facultyViewQueries(int);
+void facultyReplyToQuery(int);
 
 class schoolMember
 {
@@ -57,6 +64,18 @@ class faculty : public schoolMember
 public:
     int id;
     char depart[40];
+};
+
+// query record between student and faculty
+class Query
+{
+public:
+    int queryId;
+    int studentRoll;
+    int facultyId;
+    char message[200];
+    char reply[200];
+    char status[20]; // PENDING, ACCEPTED, DECLINED, REPLIED
 };
 
 int main()
@@ -148,8 +167,7 @@ void exit()
     system("color e");
     cout << "\n\n\t\t     THANK YOU FOR USING THIS SOFTWARE" << endl;
     cout << "\n\n";
-    cout << "\t\t   NAME                         Roll No      \n\n";
-    cout << "\t\t  Keshav Mittal                2K20/SE/73 \n\n";
+   
     cout << "\n\n";
     cout << "Input 'H' to back to home page... ";
     cin.ignore();
@@ -917,10 +935,16 @@ void loginAsFaculty()
             Sleep(300);
             cout << "\t\t\t\t 4. View Specific Student Marks.\n\n";
             Sleep(300);
-            cout << "\t\t\t\t 5. Log Out\n\n";
+            cout << "\t\t QUERIES :\n";
+            Sleep(300);
+            cout << "\t\t\t\t 5. View student queries\n\n";
+            Sleep(300);
+            cout << "\t\t\t\t 6. Reply to a query\n\n";
+            Sleep(300);
+            cout << "\t\t\t\t 7. Log Out\n\n";
             cout << "\t\t\t\t==============================" << endl;
             Sleep(300);
-            cout << "\t\t\t\tENTER YOUR CHOICE...:) <1-5> : ";
+            cout << "\t\t\t\tENTER YOUR CHOICE...:) <1-7> : ";
             Sleep(300);
             cin >> cc;
             cout << endl;
@@ -961,6 +985,18 @@ void loginAsFaculty()
                 break;
             }
             case '5':
+            {
+                facultyViewQueries(f.id);
+                goto start;
+                break;
+            }
+            case '6':
+            {
+                facultyReplyToQuery(f.id);
+                goto start;
+                break;
+            }
+            case '7':
             {
                 home();
                 break;
@@ -1031,12 +1067,16 @@ void loginAsStudent()
                  << endl;
             cout << "\t\t\t\t 1. View profile\n\n";
             Sleep(300);
-            cout << "\t\t\t\t 2. View Result.\n\n";
+            cout << "\t\t\t\t 2. Send query to faculty.\n\n";
             Sleep(300);
-            cout << "\t\t\t\t 3. Log Out\n\n";
+            cout << "\t\t\t\t 3. View my queries.\n\n";
+            Sleep(300);
+            cout << "\t\t\t\t 4. View Result.\n\n";
+            Sleep(300);
+            cout << "\t\t\t\t 5. Log Out\n\n";
             cout << "\t\t\t\t==============================" << endl;
             Sleep(300);
-            cout << "\t\t\t\tENTER YOUR CHOICE...:) <1-3> : ";
+            cout << "\t\t\t\tENTER YOUR CHOICE...:) <1-5> : ";
             Sleep(300);
             cin >> cc;
             cout << endl;
@@ -1051,6 +1091,18 @@ void loginAsStudent()
             }
             case '2':
             {
+                studentSendQuery(s.roll);
+                goto start;
+                break;
+            }
+            case '3':
+            {
+                studentViewQueries(s.roll);
+                goto start;
+                break;
+            }
+            case '4':
+            {
                 if (publishResult == 1)
                     viewSpecificStudentMarks(s.roll);
                 else
@@ -1063,7 +1115,7 @@ void loginAsStudent()
                 goto start;
                 break;
             }
-            case '3':
+            case '5':
             {
                 home();
                 break;
@@ -1084,4 +1136,268 @@ void loginAsStudent()
         if (a == 'h' || a == 'H')
             home();
     }
+}
+
+// ============================= QUERY SYSTEM IMPLEMENTATION =============================
+
+int getNextQueryId()
+{
+    ifstream infile;
+    infile.open("Queries.txt", ios::binary);
+    if (!infile)
+    {
+        return 1;
+    }
+    Query q;
+    int maxId = 0;
+    while (infile.read(reinterpret_cast<char *>(&q), sizeof(Query)))
+    {
+        if (q.queryId > maxId)
+            maxId = q.queryId;
+    }
+    infile.close();
+    return maxId + 1;
+}
+
+void studentSendQuery(int studentRoll)
+{
+    system("cls");
+    cout << "\n\n\t\t\t\t========== SEND QUERY ==========" << endl;
+    int facultyId;
+    cout << "\nEnter Faculty Id to send query: ";
+    cin >> facultyId;
+    cin.ignore();
+    char msg[200];
+    cout << "Enter your query (max 199 chars): ";
+    cin.getline(msg, 200);
+
+    Query q;
+    q.queryId = getNextQueryId();
+    q.studentRoll = studentRoll;
+    q.facultyId = facultyId;
+    std::strncpy(q.message, msg, sizeof(q.message));
+    q.message[sizeof(q.message) - 1] = '\0';
+    q.reply[0] = '\0';
+    std::strncpy(q.status, "PENDING", sizeof(q.status));
+    q.status[sizeof(q.status) - 1] = '\0';
+
+    ofstream outfile;
+    outfile.open("Queries.txt", ios::app | ios::binary);
+    if (outfile.fail())
+    {
+        cout << "\nTHE FILE COULD NOT BE OPENED...";
+        cout << "\npress enter to continue...";
+        cin.get();
+        return;
+    }
+    outfile.write(reinterpret_cast<char *>(&q), sizeof(Query));
+    outfile.close();
+    cout << "\nQuery sent successfully. Your Query ID is: " << q.queryId << "\n";
+    cout << "\npress enter to continue...";
+    cin.get();
+}
+
+void studentViewQueries(int studentRoll)
+{
+    system("cls");
+    cout << "\n\n\t\t\t\t========== MY QUERIES ==========" << endl;
+    ifstream infile;
+    infile.open("Queries.txt", ios::binary);
+    if (infile.fail())
+    {
+        cout << "\nNo queries found." << endl;
+        cout << "\npress enter to continue...";
+        cin.ignore();
+        cin.get();
+        return;
+    }
+    Query q;
+    bool any = false;
+    while (infile.read(reinterpret_cast<char *>(&q), sizeof(Query)))
+    {
+        if (q.studentRoll == studentRoll)
+        {
+            cout << "\n----------------------------------------------\n";
+            cout << "Query ID   : " << q.queryId << "\n";
+            cout << "Faculty Id : " << q.facultyId << "\n";
+            cout << "Status     : " << q.status << "\n";
+            cout << "Message    : " << q.message << "\n";
+            if (std::strlen(q.reply) > 0)
+                cout << "Reply      : " << q.reply << "\n";
+            any = true;
+        }
+    }
+    infile.close();
+    if (!any)
+    {
+        cout << "\nNo queries found." << endl;
+    }
+    cout << "\npress enter to continue...";
+    cin.ignore();
+    cin.get();
+}
+
+void facultyViewQueries(int facultyId)
+{
+    system("cls");
+    cout << "\n\n\t\t\t\t========== STUDENT QUERIES ==========" << endl;
+    ifstream infile;
+    infile.open("Queries.txt", ios::binary);
+    if (infile.fail())
+    {
+        cout << "\nNo queries available." << endl;
+        cout << "\npress enter to continue...";
+        cin.ignore();
+        cin.get();
+        return;
+    }
+    Query q;
+    bool any = false;
+    while (infile.read(reinterpret_cast<char *>(&q), sizeof(Query)))
+    {
+        if (q.facultyId == facultyId)
+        {
+            cout << "\n----------------------------------------------\n";
+            cout << "Query ID     : " << q.queryId << "\n";
+            cout << "Student Roll : " << q.studentRoll << "\n";
+            cout << "Status       : " << q.status << "\n";
+            cout << "Message      : " << q.message << "\n";
+            if (std::strlen(q.reply) > 0)
+                cout << "Reply        : " << q.reply << "\n";
+            any = true;
+        }
+    }
+    infile.close();
+    if (!any)
+    {
+        cout << "\nNo queries available." << endl;
+    }
+    cout << "\npress enter to continue...";
+    cin.ignore();
+    cin.get();
+}
+
+void facultyReplyToQuery(int facultyId)
+{
+    system("cls");
+    cout << "\n\n\t\t\t\t========== REPLY TO QUERY ==========" << endl;
+    ifstream check;
+    check.open("Queries.txt", ios::binary);
+    if (check.fail())
+    {
+        cout << "\nNo queries available." << endl;
+        cout << "\npress enter to continue...";
+        cin.ignore();
+        cin.get();
+        return;
+    }
+    Query q;
+    bool anyOpen = false;
+    while (check.read(reinterpret_cast<char *>(&q), sizeof(Query)))
+    {
+        if (q.facultyId == facultyId)
+        {
+            cout << "\n[ID: " << q.queryId << "] Roll: " << q.studentRoll << ", Status: " << q.status << "\n";
+            cout << "Message: " << q.message << "\n";
+            if (std::strlen(q.reply) > 0)
+                cout << "Reply: " << q.reply << "\n";
+            anyOpen = true;
+        }
+    }
+    check.close();
+    if (!anyOpen)
+    {
+        cout << "\nNo queries available." << endl;
+        cout << "\npress enter to continue...";
+        cin.ignore();
+        cin.get();
+        return;
+    }
+
+    cout << "\nEnter Query ID to manage (or 0 to cancel): ";
+    int qid;
+    cin >> qid;
+    if (!cin.good())
+    {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        return;
+    }
+    if (qid == 0)
+        return;
+    cin.ignore();
+
+    cout << "\nChoose action: \n";
+    cout << "  1) Accept (mark ACCEPTED)\n";
+    cout << "  2) Decline (mark DECLINED)\n";
+    cout << "  3) Reply (mark REPLIED)\n";
+    cout << "Enter choice: ";
+    char action;
+    cin >> action;
+    if (!cin.good())
+    {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        return;
+    }
+    cin.ignore();
+
+    char rep[200] = {0};
+    if (action == '3')
+    {
+        cout << "Enter reply (max 199 chars): ";
+        cin.getline(rep, 200);
+    }
+
+    fstream io;
+    io.open("Queries.txt", ios::binary | ios::in | ios::out);
+    if (io.fail())
+    {
+        cout << "\nTHE FILE COULD NOT BE OPENED...";
+        cout << "\npress enter to continue...";
+        cin.get();
+        return;
+    }
+    bool updated = false;
+    while (!io.eof() && !updated)
+    {
+        streampos pos = io.tellg();
+        io.read(reinterpret_cast<char *>(&q), sizeof(Query));
+        if (!io)
+            break;
+        if (q.queryId == qid && q.facultyId == facultyId)
+        {
+            if (action == '1')
+            {
+                std::strncpy(q.status, "ACCEPTED", sizeof(q.status));
+                q.status[sizeof(q.status) - 1] = '\0';
+            }
+            else if (action == '2')
+            {
+                std::strncpy(q.status, "DECLINED", sizeof(q.status));
+                q.status[sizeof(q.status) - 1] = '\0';
+            }
+            else if (action == '3')
+            {
+                std::strncpy(q.reply, rep, sizeof(q.reply));
+                q.reply[sizeof(q.reply) - 1] = '\0';
+                std::strncpy(q.status, "REPLIED", sizeof(q.status));
+                q.status[sizeof(q.status) - 1] = '\0';
+            }
+            io.seekp(pos);
+            io.write(reinterpret_cast<char *>(&q), sizeof(Query));
+            updated = true;
+        }
+    }
+    io.close();
+    if (updated)
+    {
+        cout << "\nReply sent successfully." << endl;
+    }
+    else
+    {
+        cout << "\nQuery not found." << endl;
+    }
+    cout << "\npress enter to continue...";
+    cin.get();
 }
