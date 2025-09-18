@@ -42,6 +42,7 @@ public:
 class student : public schoolMember
 {
 public:
+cout<<"hello";
     int roll;
     char id[40];
     char standard[20];
